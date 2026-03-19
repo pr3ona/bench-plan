@@ -36,7 +36,7 @@ export function TaskCard({ task, isDragging }: TaskCardProps) {
   const href = `/${categoryHref[task.category]}/${task.id}`
   const overdue = isOverdue(task.due_date)
   const assigneeInitials = task.assignee?.full_name
-    ? task.assignee.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? task.assignee.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : task.assignee?.email?.slice(0, 2).toUpperCase() ?? '?'
 
   return (

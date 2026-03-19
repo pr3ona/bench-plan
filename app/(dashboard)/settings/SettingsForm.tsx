@@ -18,7 +18,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
   const [isPending, startTransition] = useTransition()
 
   const initials = profile.full_name
-    ? profile.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : profile.email.slice(0, 2).toUpperCase()
 
   function handleSave(e: React.FormEvent) {

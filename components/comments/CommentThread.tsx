@@ -30,7 +30,7 @@ function CommentItem({
   const [isPending, startTransition] = useTransition()
 
   const initials = comment.author.full_name
-    ? comment.author.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? comment.author.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : comment.author.email.slice(0, 2).toUpperCase()
 
   return (

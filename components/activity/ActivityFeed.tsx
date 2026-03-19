@@ -37,7 +37,7 @@ export function ActivityFeed({ activity }: ActivityFeedProps) {
     <div className="space-y-3">
       {activity.map((item) => {
         const initials = item.actor.full_name
-          ? item.actor.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+          ? item.actor.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
           : item.actor.email.slice(0, 2).toUpperCase()
 
         return (

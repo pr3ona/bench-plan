@@ -27,7 +27,7 @@ export function UserMenu({ profile }: { profile: Profile }) {
   }
 
   const initials = profile.full_name
-    ? profile.full_name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)
+    ? profile.full_name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
     : profile.email.slice(0, 2).toUpperCase()
 
   return (
