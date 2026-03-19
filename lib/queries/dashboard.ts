@@ -1,3 +1,4 @@
+import { unstable_cache } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 
 export interface CategoryStats {
@@ -14,56 +15,56 @@ export interface DashboardData {
   investments: CategoryStats & { total_budget: number; total_spent: number }
 }
 
-export async function getDashboardStats(): Promise<DashboardData> {
-  const supabase = await createClient()
+// Cache dashboard stats for 30 seconds — invalidated by the 'tasks' tag
+// whenever a task is created/updated/deleted via a Server Action.
+export const getDashboardStats = unstable_cache(
+  async (): Promise<DashboardData> => {
+    const supabase = await createClient()
 
-  const { data: tasks } = await supabase
-    .from('tasks')
-    .select('id, category, status')
+    // Fetch all three tables in parallel
+    const [{ data: tasks }, { data: investments }, { data: opportunities }] =
+      await Promise.all([
+        supabase.from('tasks').select('id, category, status'),
+        supabase.from('internal_investments').select('task_id, budget, spent'),
+        supabase.from('opportunities').select('task_id, type'),
+      ])
 
-  const { data: investments } = await supabase
-    .from('internal_investments')
-    .select('task_id, budget, spent')
+    const allTasks = tasks ?? []
+    const allInvestments = investments ?? []
+    const allOpps = opportunities ?? []
 
-  const { data: opportunities } = await supabase
-    .from('opportunities')
-    .select('task_id, type')
-
-  const allTasks = tasks ?? []
-  const allInvestments = investments ?? []
-  const allOpps = opportunities ?? []
-
-  function statsFor(category: string): CategoryStats {
-    const cat = allTasks.filter((t) => t.category === category)
-    return {
-      total: cat.length,
-      todo: cat.filter((t) => t.status === 'todo').length,
-      in_progress: cat.filter((t) => t.status === 'in_progress').length,
-      review: cat.filter((t) => t.status === 'review').length,
-      done: cat.filter((t) => t.status === 'done').length,
+    function statsFor(category: string): CategoryStats {
+      const cat = allTasks.filter((t) => t.category === category)
+      return {
+        total: cat.length,
+        todo: cat.filter((t) => t.status === 'todo').length,
+        in_progress: cat.filter((t) => t.status === 'in_progress').length,
+        review: cat.filter((t) => t.status === 'review').length,
+        done: cat.filter((t) => t.status === 'done').length,
+      }
     }
-  }
 
-  const certStats = statsFor('certification')
+    const oppTaskIds = new Set(allTasks.filter((t) => t.category === 'opportunity').map((t) => t.id))
+    const positive_count = allOpps.filter((o) => oppTaskIds.has(o.task_id) && o.type === 'positive').length
+    const negative_count = allOpps.filter((o) => oppTaskIds.has(o.task_id) && o.type === 'negative').length
 
-  const oppTaskIds = new Set(allTasks.filter((t) => t.category === 'opportunity').map((t) => t.id))
-  const positive_count = allOpps.filter((o) => oppTaskIds.has(o.task_id) && o.type === 'positive').length
-  const negative_count = allOpps.filter((o) => oppTaskIds.has(o.task_id) && o.type === 'negative').length
+    const investTaskIds = new Set(allTasks.filter((t) => t.category === 'investment').map((t) => t.id))
+    const total_budget = allInvestments
+      .filter((i) => investTaskIds.has(i.task_id))
+      .reduce((s, i) => s + (i.budget ?? 0), 0)
+    const total_spent = allInvestments
+      .filter((i) => investTaskIds.has(i.task_id))
+      .reduce((s, i) => s + (i.spent ?? 0), 0)
 
-  const investTaskIds = new Set(allTasks.filter((t) => t.category === 'investment').map((t) => t.id))
-  const total_budget = allInvestments
-    .filter((i) => investTaskIds.has(i.task_id))
-    .reduce((s, i) => s + (i.budget ?? 0), 0)
-  const total_spent = allInvestments
-    .filter((i) => investTaskIds.has(i.task_id))
-    .reduce((s, i) => s + (i.spent ?? 0), 0)
-
-  return {
-    certifications: certStats,
-    opportunities: { ...statsFor('opportunity'), positive_count, negative_count },
-    investments: { ...statsFor('investment'), total_budget, total_spent },
-  }
-}
+    return {
+      certifications: statsFor('certification'),
+      opportunities: { ...statsFor('opportunity'), positive_count, negative_count },
+      investments: { ...statsFor('investment'), total_budget, total_spent },
+    }
+  },
+  ['dashboard-stats'],
+  { revalidate: 30, tags: ['tasks'] }
+)
 
 export async function getRecentActivity(limit = 20) {
   const supabase = await createClient()

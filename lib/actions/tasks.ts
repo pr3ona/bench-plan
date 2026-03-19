@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { z } from 'zod'
 import type { TaskStatus } from '@/lib/types/app.types'
@@ -62,6 +62,7 @@ export async function createTask(formData: FormData): Promise<{ id: string; cate
 
   await logActivity(supabase, task.id, user.id, 'created')
 
+  revalidateTag('tasks')
   revalidatePath(`/${parsed.category}s`)
   revalidatePath('/dashboard')
 
@@ -112,6 +113,7 @@ export async function updateTask(data: {
     await logActivity(supabase, id, user.id, 'progress_updated', 'progress', String(current.progress), String(updates.progress))
   }
 
+  revalidateTag('tasks')
   revalidatePath(`/${current.category}s`)
   revalidatePath(`/${current.category}s/${id}`)
   revalidatePath('/dashboard')
@@ -134,6 +136,7 @@ export async function deleteTask(id: string, category: string) {
 
   if (error) throw new Error(error.message)
 
+  revalidateTag('tasks')
   revalidatePath(`/${category}s`)
   revalidatePath('/dashboard')
 }
