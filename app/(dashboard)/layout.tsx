@@ -15,7 +15,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
     .eq('id', user.id)
     .single()
 
-  if (!profile) redirect('/login')
+  if (!profile) {
+    // Profile row missing — upsert it (happens when user signed up before migrations were applied)
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      email: user.email ?? '',
+      full_name: user.user_metadata?.full_name ?? null,
+      avatar_url: user.user_metadata?.avatar_url ?? null,
+    })
+  }
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50">
